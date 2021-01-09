@@ -7,14 +7,15 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_serialstream(&m_port)
 {
     ui->setupUi(this);
     ui->lbl_Voltage->setText(QString("0.0V"));
     ui->lbl_Current->setText(QString("0.0A"));
     ui->lbl_Rdiff->setText("Rdiff:");
+
     m_port.setBaudRate(QSerialPort::Baud115200);
     connect(&m_port, &QSerialPort::readyRead, this, &MainWindow::new_data);
+    connect(&m_port, &QSerialPort::errorOccurred, this, &MainWindow::serial_error);
 
     auto ports =  QSerialPortInfo::availablePorts();
 
@@ -29,6 +30,18 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::serial_error(QSerialPort::SerialPortError error)
+{
+    if( error != QSerialPort::SerialPortError::NotOpenError &&
+        error != QSerialPort::SerialPortError::NoError)
+    {
+        qDebug() << error;
+        ui->statusbar->showMessage(m_port.errorString(), 10*1000);
+        m_port.close();
+        ui->btnOpen->setChecked(false);
+    }
 }
 
 void MainWindow::new_data()
@@ -63,6 +76,10 @@ void MainWindow::parse_serial(QString data)
         QString m = data.section(':', 1,1);
         float r = m.toFloat();
         ui->lbl_Rdiff->setText(QString("Rdiff:%1 Ohm").arg(r, 2,'f',4));
+    }
+    else if( cmd == "Error")
+    {
+        ui->statusbar->showMessage(data,4000);
     }
 }
 

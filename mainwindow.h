@@ -19,6 +19,7 @@ public:
 
 public slots:
     void new_data();
+    void serial_error(QSerialPort::SerialPortError);
 
 private slots:
     void on_pushButton_toggled(bool checked);
@@ -36,6 +37,5 @@ private:
 private:
     Ui::MainWindow *ui;
     QSerialPort m_port;
-    QTextStream m_serialstream;
 };
 #endif // MAINWINDOW_H
