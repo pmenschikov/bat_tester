@@ -30,6 +30,10 @@ private slots:
 
     void on_btnOpen_clicked();
 
+    void on_horizontalSlider_valueChanged(int value);
+
+    void on_sldr_PWMvalue_valueChanged(int value);
+
 private:
     void parse_serial(QString data);
     void send_cmd(QByteArray);

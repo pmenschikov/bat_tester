@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->comboPort->addItem(port.portName());
     }
 
-
+    ui->lbl_PWMvalue->setText("");
 }
 
 MainWindow::~MainWindow()
@@ -38,7 +38,7 @@ void MainWindow::serial_error(QSerialPort::SerialPortError error)
         error != QSerialPort::SerialPortError::NoError)
     {
         qDebug() << error;
-        ui->statusbar->showMessage(m_port.errorString(), 10*1000);
+        ui->statusbar->showMessage(m_port.errorString(), 100);
         m_port.close();
         ui->btnOpen->setChecked(false);
     }
@@ -47,9 +47,11 @@ void MainWindow::serial_error(QSerialPort::SerialPortError error)
 void MainWindow::new_data()
 {
     static QByteArray data;
-    data.append(m_port.readAll());
+    auto d = m_port.readAll();
+    qDebug() << "new data:" << d;
+    data.append(d);
     int p;
-    if( (p = data.indexOf("\r\n"))>0)
+    while((p = data.indexOf("\r\n"))>0)
     {
         QTextStream strm(data);
         QString s_data(strm.readLine());
@@ -62,6 +64,7 @@ void MainWindow::new_data()
 void MainWindow::parse_serial(QString data)
 {
     QString cmd = data.section(':',0,0);
+    qDebug() << "serial data: " << data;
     if( cmd == "meas")
     {
         QString measurements = data.section(':',1,1);
@@ -80,6 +83,11 @@ void MainWindow::parse_serial(QString data)
     else if( cmd == "Error")
     {
         ui->statusbar->showMessage(data,4000);
+    }
+    else if( cmd == "pwma" )
+    {
+        auto arg = data.section(':', 1, 1);
+        ui->lbl_PWMvalue->setText(arg);
     }
 }
 
@@ -104,7 +112,7 @@ void MainWindow::send_cmd(QByteArray cmd)
 {
     if( m_port.isOpen() )
     {
-        cmd.append('\r');
+        cmd.append("\r\n");
         m_port.write(cmd);
     }
 }
@@ -125,4 +133,16 @@ void MainWindow::on_btnOpen_clicked()
         m_port.close();
         ui->btnOpen->setChecked(false);
     }
+}
+
+void MainWindow::on_sldr_PWMvalue_valueChanged(int value)
+{
+    QString s_val(QString("%1").arg(value));
+
+    QByteArray cmd;
+    cmd.append("pwm:");
+    cmd.append(s_val.toLocal8Bit());
+
+    send_cmd(cmd);
+
 }
