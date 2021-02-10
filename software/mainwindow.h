@@ -4,6 +4,9 @@
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QTextStream>
+#include <QTimer>
+
+#include <qwt_plot_curve.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -30,16 +33,23 @@ private slots:
 
     void on_btnOpen_clicked();
 
-    void on_horizontalSlider_valueChanged(int value);
-
     void on_sldr_PWMvalue_valueChanged(int value);
+
+    void onTimer();
 
 private:
     void parse_serial(QString data);
     void send_cmd(QByteArray);
+    void addCurve();
 
 private:
     Ui::MainWindow *ui;
     QSerialPort m_port;
+
+    QwtPlotCurve *m_curve_volt;
+    QwtPlotCurve *m_curve_current;
+    QTimer m_timer;
+    QPolygonF m_points_voltage;
+    QPolygonF m_points_current;
 };
 #endif // MAINWINDOW_H

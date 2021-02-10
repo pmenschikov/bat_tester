@@ -4,6 +4,22 @@
 #include "ui_mainwindow.h"
 #include <QSerialPortInfo>
 
+#include <qwt_plot.h>
+#include <qwt_plot_grid.h>
+
+#include <qwt_legend.h>
+
+#include <qwt_plot_curve.h>
+#include <qwt_symbol.h>
+
+#include <qwt_plot_magnifier.h>
+
+#include <qwt_plot_panner.h>
+
+#include <qwt_plot_picker.h>
+#include <qwt_picker_machine.h>
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -25,11 +41,23 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     ui->lbl_PWMvalue->setText("");
+
+    QwtPlotGrid *grid = new QwtPlotGrid();
+
+    grid->setMajorPen(QPen(Qt::gray, 1));
+    grid->attach(ui->qwtPlot);
+
+    addCurve();
+    ui->qwtPlot->setAutoReplot();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::onTimer()
+{
 }
 
 void MainWindow::serial_error(QSerialPort::SerialPortError error)
@@ -63,6 +91,8 @@ void MainWindow::new_data()
 
 void MainWindow::parse_serial(QString data)
 {
+    static float x=0.f;
+
     QString cmd = data.section(':',0,0);
     qDebug() << "serial data: " << data;
     if( cmd == "meas")
@@ -73,6 +103,13 @@ void MainWindow::parse_serial(QString data)
 
         ui->lbl_Voltage->setText(QString("%1V").arg(voltage,2,'f',2));
         ui->lbl_Current->setText(QString("%1A").arg(current,2,'f',2));
+
+        m_points_voltage << QPointF(x, voltage);
+        m_points_current << QPointF(x, current);
+
+        m_curve_current->setSamples(m_points_current);
+        m_curve_volt->setSamples(m_points_voltage);
+        x+=0.1;
     }
     else if( cmd == "Rdiff")
     {
@@ -145,4 +182,21 @@ void MainWindow::on_sldr_PWMvalue_valueChanged(int value)
 
     send_cmd(cmd);
 
+}
+
+void MainWindow::addCurve()
+{
+    m_curve_volt = new QwtPlotCurve;
+
+    m_curve_volt->setTitle("curve voltage");
+    m_curve_volt->setPen(Qt::blue, 2);
+
+    m_curve_volt->attach(ui->qwtPlot);
+
+    m_curve_current = new QwtPlotCurve;
+    m_curve_current->setTitle("curve current");
+    m_curve_current->setPen(Qt::red, 2);
+
+
+    m_curve_current->attach(ui->qwtPlot);
 }
