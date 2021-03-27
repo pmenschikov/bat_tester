@@ -38,13 +38,16 @@ int16_t measurement_channel(uint8_t channel)
 }
 void measurement()
 {
-    ads.setGain(GAIN_FOUR);
+    ads.setGain(GAIN_FOUR); // 1.024
   voltage_raw = measurement_channel(VOLTAGE_CHANNEL);
-    ads.setGain(GAIN_EIGHT);
+    ads.setGain(GAIN_FOUR); // 1.024
   current_raw = measurement_channel(CURRENT_CHANNEL);
 
-  voltage = voltage_raw*0.000491f*2.f;
-  current = current_raw*0.000161f;
+  const float voltage_coef = 0.000491f*2.f;
+  const float current_coef = 0.000161f*2.f;
+
+  voltage = voltage_raw*voltage_coef;
+  current = current_raw*current_coef;
 }
 
 void battery_test()
@@ -54,14 +57,14 @@ void battery_test()
   Serial.println(F("Battery test"));
   // set current 1A
   analogWrite(PIN_PWM, pwm_1a);
-  delay(100);
+  delay(20);
   measurement();
   v_1a = voltage;
   c_1a = current;
   
   // set current 2A
   analogWrite(PIN_PWM, pwm_2a);
-  delay(100);
+  delay(20);
   measurement();
   v_2a = voltage;
   c_2a = current;
