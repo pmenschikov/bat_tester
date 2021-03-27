@@ -12,6 +12,9 @@ const uint8_t pwm_2a = 255;
 float voltage = 0.0f;
 float current = 0.0f;
 
+int voltage_raw;
+int current_raw;
+
 bool show_realtime = true;
 
 void setup() {
@@ -19,7 +22,7 @@ void setup() {
   Wire.begin();
   Serial.begin(115200);
   // 0.512V full scale
-  ads.setGain(GAIN_EIGHT);
+
 }
 
 int16_t measurement_channel(uint8_t channel)
@@ -35,11 +38,13 @@ int16_t measurement_channel(uint8_t channel)
 }
 void measurement()
 {
-  auto v = measurement_channel(VOLTAGE_CHANNEL);
-  auto c = measurement_channel(CURRENT_CHANNEL);
+    ads.setGain(GAIN_FOUR);
+  voltage_raw = measurement_channel(VOLTAGE_CHANNEL);
+    ads.setGain(GAIN_EIGHT);
+  current_raw = measurement_channel(CURRENT_CHANNEL);
 
-  voltage = v*0.000491f;
-  current = c*0.000161f;
+  voltage = voltage_raw*0.000491f*2.f;
+  current = current_raw*0.000161f;
 }
 
 void battery_test()
@@ -61,13 +66,13 @@ void battery_test()
   v_2a = voltage;
   c_2a = current;
   analogWrite(PIN_PWM, 0);
-  Serial.print(F("voltage 1A:"));
-  Serial.println(v_1a);
-  Serial.print(F("current 1A:"));
+  Serial.print(F("R1A:"));
+  Serial.print(v_1a);
+  Serial.print(F(","));
   Serial.println(c_1a);
-  Serial.print(F("voltage 2A:"));
-  Serial.println(v_2a);
-  Serial.print(F("current 2A:"));
+  Serial.print(F("R2A:"));
+  Serial.print(v_2a);
+  Serial.print(F(","));
   Serial.println(c_2a);
   float diff = c_2a-c_1a;
   if( diff > 1e-5 )

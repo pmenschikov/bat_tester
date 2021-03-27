@@ -41,6 +41,7 @@ private:
     void parse_serial(QString data);
     void send_cmd(QByteArray);
     void addCurve();
+    void addSamples(float v, float i);
 
 private:
     Ui::MainWindow *ui;

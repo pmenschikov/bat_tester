@@ -76,7 +76,7 @@ void MainWindow::new_data()
 {
     static QByteArray data;
     auto d = m_port.readAll();
-    qDebug() << "new data:" << d;
+    //qDebug() << "new data:" << d;
     data.append(d);
     int p;
     while((p = data.indexOf("\r\n"))>0)
@@ -91,7 +91,6 @@ void MainWindow::new_data()
 
 void MainWindow::parse_serial(QString data)
 {
-    static float x=0.f;
 
     QString cmd = data.section(':',0,0);
     qDebug() << "serial data: " << data;
@@ -104,12 +103,7 @@ void MainWindow::parse_serial(QString data)
         ui->lbl_Voltage->setText(QString("%1V").arg(voltage,2,'f',2));
         ui->lbl_Current->setText(QString("%1A").arg(current,2,'f',2));
 
-        m_points_voltage << QPointF(x, voltage);
-        m_points_current << QPointF(x, current);
-
-        m_curve_current->setSamples(m_points_current);
-        m_curve_volt->setSamples(m_points_voltage);
-        x+=0.1;
+        addSamples(voltage, current);
     }
     else if( cmd == "Rdiff")
     {
@@ -126,6 +120,26 @@ void MainWindow::parse_serial(QString data)
         auto arg = data.section(':', 1, 1);
         ui->lbl_PWMvalue->setText(arg);
     }
+    else if( cmd == "R1A" || cmd == "R2A" )
+    {
+        QString measurements = data.section(':',1,1);
+        float voltage = measurements.section(',',0,0).toFloat();
+        float current = measurements.section(',',1,1).toFloat();
+
+        addSamples(voltage, current);
+    }
+}
+
+void MainWindow::addSamples(float voltage, float current)
+{
+
+    static float x=0.f;
+    m_points_voltage << QPointF(x, voltage);
+    m_points_current << QPointF(x, current);
+
+    m_curve_current->setSamples(m_points_current);
+    m_curve_volt->setSamples(m_points_voltage);
+    x+=0.1;
 }
 
 void MainWindow::on_pushButton_toggled(bool checked)
