@@ -1,7 +1,93 @@
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
 
-Adafruit_ADS1115 ads;
+static uint8_t i2cread(void) {
+#if ARDUINO >= 100
+  return Wire.read();
+#else
+  return Wire.receive();
+#endif
+}
+static void i2cwrite(uint8_t x) {
+#if ARDUINO >= 100
+  Wire.write((uint8_t)x);
+#else
+  Wire.send(x);
+#endif
+}
+
+
+static void writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value) {
+  Wire.beginTransmission(i2cAddress);
+  i2cwrite((uint8_t)reg);
+  i2cwrite((uint8_t)(value >> 8));
+  i2cwrite((uint8_t)(value & 0xFF));
+  Wire.endTransmission();
+}
+static uint16_t readRegister(uint8_t i2cAddress, uint8_t reg) {
+  Wire.beginTransmission(i2cAddress);
+  i2cwrite(reg);
+  Wire.endTransmission();
+  Wire.requestFrom(i2cAddress, (uint8_t)2);
+  return ((i2cread() << 8) | i2cread());
+}
+
+
+class Fast_ADS1115: public  Adafruit_ADS1115
+{
+  public:
+    Fast_ADC1115(uint8_t i2cAddress)
+    {
+      m_i2cAddress = i2cAddress;
+      m_conversionDelay = 2;
+      m_bitShift = 0;
+    }
+uint16_t readADC_SingleEnded(uint8_t channel) {
+  if (channel > 3) {
+    return 0;
+  }
+
+  // Start with default values
+  uint16_t config =
+      ADS1015_REG_CONFIG_CQUE_NONE |    // Disable the comparator (default val)
+      ADS1015_REG_CONFIG_CLAT_NONLAT |  // Non-latching (default val)
+      ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
+      ADS1015_REG_CONFIG_CMODE_TRAD |   // Traditional comparator (default val)
+      7<<5 |   // 1600 samples per second (default)
+      ADS1015_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
+
+  // Set PGA/voltage range
+  config |= m_gain;
+
+  // Set single-ended input channel
+  switch (channel) {
+  case (0):
+    config |= ADS1015_REG_CONFIG_MUX_SINGLE_0;
+    break;
+  case (1):
+    config |= ADS1015_REG_CONFIG_MUX_SINGLE_1;
+    break;
+  case (2):
+    config |= ADS1015_REG_CONFIG_MUX_SINGLE_2;
+    break;
+  case (3):
+    config |= ADS1015_REG_CONFIG_MUX_SINGLE_3;
+    break;
+  }
+
+  // Set 'start single-conversion' bit
+  config |= ADS1015_REG_CONFIG_OS_SINGLE;
+
+  // Write config register to the ADC
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_CONFIG, config);
+
+  // Wait for the conversion to complete
+  delay(m_conversionDelay);
+  return readRegister(m_i2cAddress, ADS1015_REG_POINTER_CONVERT) >> m_bitShift;
+}
+};
+
+Fast_ADS1115 ads;
 
 const uint8_t VOLTAGE_CHANNEL = 0;
 const uint8_t CURRENT_CHANNEL = 1;
@@ -21,14 +107,18 @@ void setup() {
   // put your setup code here,to run once:
   Wire.begin();
   Serial.begin(115200);
+  Serial.println("started");
   // 0.512V full scale
+
+  TCCR1B &= 0xF8;
+  TCCR1B |= 1;
 
 }
 
 int16_t measurement_channel(uint8_t channel)
 {
   int32_t sum = 0;
-  uint8_t count = 16;
+  uint8_t count = 4;
 
   for(uint8_t i=0; i<count; ++i)
   {
@@ -57,14 +147,14 @@ void battery_test()
   Serial.println(F("Battery test"));
   // set current 1A
   analogWrite(PIN_PWM, pwm_1a);
-  delay(20);
+  delay(10);
   measurement();
   v_1a = voltage;
   c_1a = current;
   
   // set current 2A
   analogWrite(PIN_PWM, pwm_2a);
-  delay(20);
+  delay(10);
   measurement();
   v_2a = voltage;
   c_2a = current;
