@@ -1,6 +1,17 @@
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
 
+const char help_string[] PROGMEM =
+"Battery tester\n"
+"Available commands:\n"
+"\thelp - show this help\n"
+"\tbtest - start battery resistance measurement\n"
+"\ton_1a,on_2a,off_1a,off_2a - on/off 1a/2a current\n"
+"\trt,nort - show runtime values\n"
+"\tpwm - set pwm value (set current)\n"
+"\tload_on, load_off - on/off external load relay\n"
+;
+
 static uint8_t i2cread(void) {
 #if ARDUINO >= 100
   return Wire.read();
@@ -92,6 +103,7 @@ Fast_ADS1115 ads;
 const uint8_t VOLTAGE_CHANNEL = 0;
 const uint8_t CURRENT_CHANNEL = 1;
 const uint8_t PIN_PWM = 9;
+const uint8_t PIN_LOAD = 3;
 const uint8_t pwm_1a = 128;
 const uint8_t pwm_2a = 255;
 
@@ -108,6 +120,7 @@ void setup() {
   Wire.begin();
   Serial.begin(115200);
   Serial.println("started");
+  pinMode(PIN_LOAD, OUTPUT);
   // 0.512V full scale
 
   TCCR1B &= 0xF8;
@@ -218,17 +231,29 @@ void handle_command(const char *cmd)
     Serial.println(pwm);
     analogWrite(PIN_PWM, pwm);
   }
+  else if( strcmp_P(cmd, PSTR("load_on")) == 0 )
+  {
+    digitalWrite(PIN_LOAD, HIGH);
+  }
+  else if( strcmp_P(cmd, PSTR("load_off")) == 0 )
+  {
+    digitalWrite(PIN_LOAD, LOW);
+  }
+  else if( strcmp_P(cmd, PSTR("help")) == 0 )
+  {
+    Serial.println(reinterpret_cast<const __FlashStringHelper*>(help_string));
+  }
   else
   {
-    Serial.print(F("Error: available cmds - btest, on_1a, on_2a, off_1a, off_2a,"));
-    Serial.println(F("rt,nort,pwm"));
+    Serial.print(F("Error: available cmds - help, btest, on_1a, on_2a, off_1a, off_2a,"));
+    Serial.println(F("rt,nort,pwm, load_on, load_off"));
   }
 
 }
 
 void handle_serial()
 {
-  static char cmd_buffer[8];
+  static char cmd_buffer[12];
   static uint8_t pos = 0;
   while(Serial.available())
   {
